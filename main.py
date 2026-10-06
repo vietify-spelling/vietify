@@ -26,8 +26,7 @@ PHONEMIZER_LANGUAGES = {
     "de": "de",
     "ru": "ru", 
 
-    "ja": "ja",
-    "ko": "ko",
+    # "ko": "ko",
 }
 
 
@@ -51,7 +50,7 @@ def normalize_phonemized_ipa(
         .replace("ɜ", "ə")
         .replace("ᵻ", "ɪ")
         .replace("ɾ", "r")
-        .replace("ɥ", "w")
+        # .replace("ɥ", "w")
         .replace("ʌ", "ɔ")
 
        #russian 

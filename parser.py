@@ -166,14 +166,10 @@ Stress =
     / "ˌ"
 
 
-# DiphthongEnding =
-#       "eɪt"
-#     / "jəŋ"
-#     / "eɪn"
-
 Glide =
     "j"
     / "w"
+    / "ɥ"
 
 TrueDiphthong =
       "oʊ"

@@ -1,23 +1,23 @@
 NULL_MAPPING = "_"
 
+
 ENDING_CONSONANT_MAPPING: dict[str, str] = {
     "t": "t",
-    "d": "t",
+    "d": "d",
     "k": "c",
-    "ɡ": "c",
+    "ɡ": "ɡ",
     "p": "p",
-    "b": "p",
-
+    "b": "b",
 
     "m": "m",
     "n": "n",
     "ŋ": "ng",
 
 
-    "v": "p",
-    "f" : "p",
-    "s" : "t",
-    "z" : "t",
+    "v": "v",
+    "f" : "f",
+    "s" : "s",
+    "z" : "z",
 
     "l": "l",
     "ɫ": "l",
@@ -25,13 +25,13 @@ ENDING_CONSONANT_MAPPING: dict[str, str] = {
     "ʁ": "ʁ",
 
     #german
-    "x": "c",
-    "ç": "c",
+    "x": "kh",
+    "ç": "kh",
 
-    "ts": "t",
-    "pf": "p",
+    "ts": "ts",
+    "pf": "pf",
     "r" : "r"
-} 
+}  
 
 
 NUCLEUS_MAPPING: dict[str, str] = {
@@ -57,12 +57,11 @@ NUCLEUS_MAPPING: dict[str, str] = {
 
     # not exact equivalence in vietnamese 
     "aʊ": "ao",
-    "yi": "ui",
+    "yi": "üi",
 
     #german
     "ɔʏ": "oi",
 
-    # "j": "i",
     "jaʊ": "iau",
     "jeɪ": "iây",
     "ji": "i",
@@ -81,7 +80,7 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "wi": "ui",
     "woʊ": "uâu",
     "wu": "u",
-    "wæ": "ua",
+    "wæ": "uae",
     "wɑ": "ua",
     "wɔ": "uo",
     "wə": "ua",
@@ -90,35 +89,44 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "wʊ": "u",
     "wa": "oa",
 
-    "æ": "a",
-    "ɑ": "a",
-    "ɑɛ": "a",
+    "ɥi": "ü-i",
+    "ɥɛ": "ü-e",
+    "ɥe": "ü-ê",
+    "ɥɛ̃": "ü-ăng",
+    "ɥa": "ü-a",
+    "ɥɑ": "ü-a",
+    "ɥɔ": "ü-o",
+    "ɥœ": "ü-ơ",
+    "ɥø": "ü-ơ",
+
+    "æ": "ae",
+    "ɑ": "ä",
+    "ɑɛ": "ae",
 
     #very similar to /i/ and /u/ /y/ just mostly length, slightly less forward/backward
     "ɪ": "i",
     "ʊ": "u",
-    "ʏ": "uy",
+    "ʏ": "ü",
 
-    "y": "uy",
-    "ø": "ơ",
-    "œ": "ơ",
-    "ɐ": "ơ",
+    "y": "ü",
+    "ø": "ø",
+    "œ": "œ",
+    "ɐ": "â",
 
     "ɑ̃": "oong",
     "ɛ̃": "ăng",
     "ɔ̃": "ông",
     "œ̃": "ăng",
 
-    "jɑ̃": "i-oong",
-    "jɛ̃": "i-ăng",
-    "jɔ̃": "i-ông",
-    "jœ̃": "i-ăng",
+    "jɑ̃": "ioong",
+    "jɛ̃": "iăng",
+    "jɔ̃": "iông",
+    "jœ̃": "iăng",
 
     # russian
     "ɵ": "ô"
 
 }
-
 
 SYLLABLE_ENDING_MAPPING: dict[str, str] = {
     **NUCLEUS_MAPPING,
@@ -145,7 +153,7 @@ SYLLABLE_ENDING_MAPPING: dict[str, str] = {
     # uỵa + ending → uyệ + mapped ending
     **{
         nucleus + ending: "uô" + mapped_ending
-        for nucleus in ("wiə", "ya", "yə", "yɐ")
+        for nucleus in ["wiə"]
         for ending, mapped_ending in ENDING_CONSONANT_MAPPING.items()
     },
 
@@ -163,6 +171,7 @@ SYLLABLE_ENDING_MAPPING: dict[str, str] = {
     "uyc" : "uych",
 
 }
+
 
 LETTER_MAPPING: dict[str, str] = {
     # exact 1-1 correspondant
@@ -216,43 +225,44 @@ LETTER_MAPPING: dict[str, str] = {
 
 
     # not exact equivalence in vietnamese 
-    "dʒ": "gi",
-    "ʒ": "gi",  ##gi
-    "j": "gi",
+    "dʒ": "dʒ",
+    "ʒ": "ʒ",  ##gi
+    "j": "j",
  
-    "æ": "a",
-    "ɑ": "a",
+    "æ": "ae",
+    "ɑ": "ä",
     "ɪ": "i",
     "ʊ": "u",
-    "ɝ": "ơ",
+    "ɝ": "ơr",
 
     "ɡ": "ɡ",
     "ɫ": "l",
     "ɹ": "r",
     "ʃ": "sh",
-    "θ": "s",
-    "ð": "z",
+    "θ": "ss",
+    "ð": "zz",
 
     # french
-    "y": "uy",
+    "y": "ü",
+    "ɥ": "ü",
 
     "ɑ̃": "oong",
     "ɛ̃": "ăng",
     "ɔ̃": "ông",
     "œ̃": "ăng",
 
-    "ø": "ơ",
-    "œ": "ơ",
+    "ø": "ø",
+    "œ": "œ",
 
-    "ʁ": "ɡ",
+    "ʁ": "ʁ",  # this has a voiceless complementation at end of sentence/ before or after voiceless obstruent. but hard and costly to encode this...
 
     #german
-    "ʏ": "uy",
-    "ɐ": "ơ",
+    "ʏ": "ü",
+    "ɐ": "â",
     "x": "kh",
     "ç": "kh",
-    "ts": "s",
-    "pf": "ph",
+    "ts": "ts",
+    "pf": "pf",
 
     # russian
     "ʐ" : "zh",  # espeak use this letter for /ʒ/ sound, but in russian it is /ʐ/
@@ -269,30 +279,29 @@ GERMAN_R_VOCALIZATION: dict[str, str] = {
     "ɪr": "iê",  # become "ia" if behind have nothing else
     "ir": "iê", # become "ia" if behind have nothing else
 
-    "ʏr": "uyê", # become "üa" if behind have nothing else
-    "yr": "uyê", # become "üa" if behind have nothing else  #make it "uya/uyê" in the strong version
+    "ʏr": "üê", # become "üa" if behind have nothing else
+    "yr": "üê", # become "üa" if behind have nothing else  #make it "uya/uyê" in the strong version
 
     "ʊr": "ươ", # become "ưa" if behind have nothing else
     "ur": "uô", # become "ua" if behind have nothing else
 
-    "ɛr": "e",
-    "er": "ê",
+    "ɛr": "eơ",
+    "er": "êơ",
 
-    "œr": "ơ",
-    "ør": "ơ",
+    "œr": "œơ",
+    "ør": "øơ",
 
-    "ɔr": "o",
-    "or": "ô",
+    "ɔr": "oơ",
+    "or": "ôơ",
 
-    "ar": "a",
+    "ar": "aơ",
 }
 
 GERMAN_R_VOCALIZATION_WITHOUT_CODA: dict[str, str] = {
     "ɪr": "ia",
     "ir": "ia",
-    "ʏr": "uya", 
-    "yr": "uya", 
+    "ʏr": "üa", 
+    "yr": "üa", 
     "ʊr": "ưa", 
     "ur": "ua", 
 }
-

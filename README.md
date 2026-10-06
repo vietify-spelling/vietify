@@ -148,6 +148,8 @@ For pronunciation from ordinary text, use the CLI. Text phonemization is handled
 
 This project is released into the public domain. See [LICENSE](LICENSE).
 
-
+Based on @vuadu/ipa-to-vie by Rezza Inc.
+Original: https://github.com/vuadu/ipa-to-vie
+Licensed under MIT.
 
 

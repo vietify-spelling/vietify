@@ -1,7 +1,3 @@
-COMBINE_ACUTE = "\u0301"
-COMBINE_DOT = "\u0323"
-COMBINE_GRAVE = "\u0300"
-
 NULL_MAPPING = "_"
 
 TONE_MAPPING: dict[str, str] = {
@@ -28,7 +24,7 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "o": "o",
     "e": "ơ",
 
-    "ji": "ji",
+    "yi" : "i",
     "wu": "wu",
     "yu" : "ü",
 

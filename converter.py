@@ -6,10 +6,10 @@ from typing import Literal, Protocol
 from parsimonious.exceptions import ParseError
 
 from . import (
+    IPAruleStrong,
+    IPAruleWeak,
     pinyinRuleStrong,
     pinyinRuleWeak,
-    vietifyRuleStrong,
-    vietifyRuleWeak,
 )
 
 from .parser import parse
@@ -37,8 +37,8 @@ class ConversionRules(Protocol):
 
 
 _RULES: dict[RuleMode, ConversionRules] = {
-    "weak": vietifyRuleWeak,
-    "strong": vietifyRuleStrong,
+    "weak": IPAruleWeak,
+    "strong": IPAruleStrong,
 }
 
 _PINYIN_RULES: dict[RuleMode, ConversionRules] = {
@@ -233,11 +233,11 @@ def _build_vie_syllable(
     if language == "de":
         syllable_ending_mapping = {
             **syllable_ending_mapping,
-            **vietifyRuleWeak.GERMAN_R_VOCALIZATION,
+            **IPAruleWeak.GERMAN_R_VOCALIZATION,
         }
         if not has_following_consonant:
             syllable_ending_mapping.update(
-                vietifyRuleWeak.GERMAN_R_VOCALIZATION_WITHOUT_CODA,
+                IPAruleWeak.GERMAN_R_VOCALIZATION_WITHOUT_CODA,
             )
 
     is_null_ending = tail not in syllable_ending_mapping
@@ -550,7 +550,7 @@ def add_tonal_mark_to_vowel(vie: str, tonal_mark: str) -> str:
             )
 
     # Vowels with inherent Vietnamese quality marks.
-    match = re.search(r"[âăêôơư]", vie, re.IGNORECASE)
+    match = re.search(r"[âăêôơưü]", vie, re.IGNORECASE)
     if match:
         vowel = match.group()
         return (
@@ -631,7 +631,7 @@ def _convert_tonal_ast_to_vie(
             )
 
             if vie_syl == original and not re.search(
-                r"[aeiouyâăêôơư]",
+                r"[aeiouyâăêôơưü]",
                 vie_syl,
                 re.IGNORECASE,
             ):
