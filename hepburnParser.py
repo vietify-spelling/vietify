@@ -1,183 +1,85 @@
-import re
 import unicodedata
 
-from parsimonious.grammar import Grammar
-from parsimonious.nodes import NodeVisitor
+
+VOWELS = frozenset("aāeēiīoōuū")
+_DIPHTHONGS = frozenset({"ai", "au", "ei", "oi", "ou", "ui"})
+_ONSETS = (
+    "ch", "sh", "ts",
+    "by", "dy", "gy", "hy", "jy", "ky", "my", "ny", "py", "ry", "sy", "ty", "zy",
+    "b", "d", "f", "g", "h", "j", "k", "m", "n", "p", "r", "s", "t", "w", "y", "z",
+)
 
 
-grammar = Grammar(r"""
-Word = ws "/"? (Syllable ws)* "/"? ws
-
-ws = " "*
+class HepburnParseError(ValueError):
+    """Raised when a romanized Japanese word is not valid Hepburn input."""
 
 
-Syllable =
-      SyllableWithEnding
-    / SyllableWithConsonant
-    / SyllableBare
+def _append_moraic_nasal(syllables: list[dict[str, str | None]]) -> None:
+    if syllables and syllables[-1]["nucleus"] and not syllables[-1]["ending"]:
+        syllables[-1]["ending"] = "n"
+        return
 
-SyllableWithEnding =
-     InitialConsonant  SyllableEnding
-
-SyllableWithConsonant =
-    InitialConsonant
-
-SyllableBare =
-     SyllableEnding
-
-SyllableEnding =
-      DiphthongWithEnding
-    / VowelWithEnding
-    / BareDiphthong
-    / BareVowel
-    
-DiphthongWithEnding = (Diphthong) EndingConsonant !(Diphthong / Vowel) 
-VowelWithEnding = Vowel EndingConsonant  !(Diphthong / Vowel) 
-
-Diphthong = 
-    Glide TrueDiphthong
-    / Glide Vowel
-    / TrueDiphthong
-
-BareDiphthong =
-    Diphthong !Vowel
-
-BareVowel =
-    Vowel
+    syllables.append({
+        "initial": None,
+        "nucleus": None,
+        "ending": "n",
+        "nasal_realization": None,
+    })
 
 
-# ---------------------------------------------------------
-# Japanese Hepburn initial consonants
-# ---------------------------------------------------------
-#
-# Multi-character consonants must come first.
-#
-# Examples:
-#   sh + a = sha
-#   ch + a = cha
-#   ts + u = tsu
-#   ky + a = kya
-#   ry + o = ryo
-#
+def parse(text: str) -> list[dict[str, str | None]]:
+    """Parse one Hepburn word into onset, nucleus, and moraic-nasal fields."""
+    word = unicodedata.normalize("NFC", text).lower().replace("’", "'")
+    if not word:
+        raise HepburnParseError("Hepburn input cannot be empty")
 
-InitialConsonant =
-      "sh"
-    / "ch"
-    / "ts"
-    # / "ky"
-    # / "gy"
-    / "ny"
-    # / "hy"
-    # / "my"
-    # / "ry"
-    # / "by"
-    # / "py"
-    / "jy"
-    # / "dy"
-    / "b"
-    / "p"
-    / "m"
-    / "f"
-    / "d"
-    / "t"
-    / "n"
-    / "r"
-    / "g"
-    / "k"
-    / "h"
-    / "j"
-    / "z"
-    / "s"
-    / "w"
-    / "y"
+    syllables: list[dict[str, str | None]] = []
+    index = 0
 
+    while index < len(word):
+        if word[index] == "n" and (
+            index + 1 == len(word)
+            or word[index + 1] == "'"
+            or word[index + 1] not in VOWELS | {"y"}
+        ):
+            _append_moraic_nasal(syllables)
+            index += 1
+            if index < len(word) and word[index] == "'":
+                index += 1
+            continue
 
-# ---------------------------------------------------------
-# Japanese moraic nasal
-# ---------------------------------------------------------
-#
-# Hepburn:
-#   n
-#   n'
-#
-# n' prevents ambiguity before vowels/y:
-#   kan'i
-#   shin'yō
-#
-# ---------------------------------------------------------
+        onset = next(
+            (candidate for candidate in _ONSETS if word.startswith(candidate, index)),
+            "",
+        )
+        if onset:
+            index += len(onset)
+        elif word[index] in VOWELS:
+            onset = ""
+        else:
+            raise HepburnParseError(
+                f"invalid Hepburn sequence at position {index}: {word[index:]!r}"
+            )
 
-EndingConsonant =
-      "n'" 
-    / "n"
+        if index >= len(word) or word[index] not in VOWELS:
+            raise HepburnParseError(
+                f"expected a vowel after {onset or 'word start'} in {word!r}"
+            )
 
+        nucleus = word[index]
+        if (
+            index + 1 < len(word)
+            and nucleus + word[index + 1] in _DIPHTHONGS
+        ):
+            nucleus += word[index + 1]
+            index += 1
+        index += 1
 
-# ---------------------------------------------------------
-# Vowels
-# ---------------------------------------------------------
-#
-# Macrons are canonical Hepburn representations of long vowels.
-#
-# ā ī ū ē ō
-#
-# Bare u/o etc. remain normal vowels.
-# ---------------------------------------------------------
+        syllables.append({
+            "initial": onset or None,
+            "nucleus": nucleus,
+            "ending": None,
+            "nasal_realization": None,
+        })
 
-Vowel =
-      "ā"
-    / "ī"
-    / "ū"
-    / "ē"
-    / "ō"
-    / "a"
-    / "i"
-    / "u"
-    / "e"
-    / "o"
-
-
-# ---------------------------------------------------------
-# Glides
-# ---------------------------------------------------------
-
-Glide =
-      "y"
-    / "w"
-
-
-# ---------------------------------------------------------
-# True diphthongs / vowel combinations
-# ---------------------------------------------------------
-#
-# Japanese yōon:
-#
-# kya kyu kyo
-# gya gyu gyo
-# sha shu sho
-# cha chu cho
-# ja  ju  jo
-# nya nyu nyo
-# hya hyu hyo
-# bya byu byo
-# pya pyu pyo
-# mya myu myo
-# rya ryu ryo
-#
-# These are represented as:
-#
-#   InitialConsonant + Diphthong
-#
-# while simple vowel sequences are handled separately.
-
-# japanses doesnt have true diphthong tho. but i still use this representation for the sake of convenient
-# ---------------------------------------------------------
-
-TrueDiphthong =
-      "ai"
-    / "oi"
-    / "ui"
-    / "ei"
-    / "au"
-    / "ou"
-
-
-""")
+    return syllables

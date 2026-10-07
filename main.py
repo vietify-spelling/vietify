@@ -10,11 +10,21 @@ from phonemizer import phonemize
 from typing import cast
 
 if __package__:
-    from .converter import _apply_french_liaison, ipa_to_vie, pinyin_to_vie
+    from .converter import (
+        _apply_french_liaison,
+        hepburn_to_vie,
+        ipa_to_vie,
+        pinyin_to_vie,
+    )
 else:
     # Allow ``python main.py`` when this file is run from the package folder.
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from vietify.converter import _apply_french_liaison, ipa_to_vie, pinyin_to_vie
+    from vietify.converter import (
+        _apply_french_liaison,
+        hepburn_to_vie,
+        ipa_to_vie,
+        pinyin_to_vie,
+    )
 
 
 PHONEMIZER_LANGUAGES = {
@@ -119,7 +129,7 @@ def text_to_vietify_modes(
 
 
 def _text_to_pronunciation(text: str, language: str) -> str:
-    if language in {"ch", "ipa"}:
+    if language in {"ch", "ja", "ipa"}:
         return text
 
     return cast(
@@ -137,7 +147,7 @@ def _text_to_pronunciation(text: str, language: str) -> str:
 
 
 def _normalize_pronunciation(pronunciation: str, language: str) -> str:
-    if language != "ch":
+    if language not in {"ch", "ja"}:
         return normalize_phonemized_ipa(
             pronunciation,
             language,
@@ -152,6 +162,9 @@ def _convert_pronunciation(
     mode: Literal["weak", "strong"],
 ) -> str:
     converted_words = []
+
+    if language == "ja":
+        return hepburn_to_vie(pronunciation, mode=mode)["vie"]
 
     for word in pronunciation.split():
         match = re.match(
@@ -373,7 +386,8 @@ def main() -> int:
         help=(
             "Input language: en-gb (British English), en-us (American English), "
             "en-au (Australian English), fr (French), de (German), ru (Russian), "
-            "ch (Chinese pinyin), ja (Japanese), ko (Korean), or ipa (already-transcribed IPA). "
+            "ch (Chinese pinyin), ja (Japanese Hepburn romanization), "
+            "ko (Korean), or ipa (already-transcribed IPA). "
             "Default: en-us."
         ),
     )

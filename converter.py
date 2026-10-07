@@ -8,10 +8,12 @@ from parsimonious.exceptions import ParseError
 from . import (
     IPAruleStrong,
     IPAruleWeak,
+    hepburnRuleStrong,
     pinyinRuleStrong,
     pinyinRuleWeak,
 )
 
+from .hepburnParser import HepburnParseError, parse as parse_hepburn
 from .parser import parse
 from .pinyinParser import parse as parse_pinyin
 
@@ -653,6 +655,176 @@ def _convert_tonal_ast_to_vie(
         vie_parts.append(vie_syl)
 
     return "".join(vie_parts)
+
+
+_HEPBURN_WORD_RE = re.compile(
+    r"[A-Za-zĀĒĪŌŪāēīōū]+(?:['’][A-Za-zĀĒĪŌŪāēīōū]+)?"
+)
+
+
+def _hepburn_nasal_realization(
+    following_syllable: dict[str, str | None] | None,
+) -> str:
+    if following_syllable is None:
+        return "nasalized"
+
+    initial = following_syllable.get("initial") or ""
+    if initial in {"p", "b", "m"}:
+        return "bilabial"
+    if initial in {"k", "g", "ky", "gy"}:
+        return "velar" if initial in {"k", "g"} else "dorso_palatal"
+    if initial in {"ch", "j", "ny", "jy"}:
+        return "dorso_palatal"
+    if initial in {"t", "d", "ts", "z", "n", "ty", "dy"}:
+        return "alveolar"
+    if initial == "r":
+        return "apical"
+
+    return "nasalized"
+
+
+def _convert_hepburn_word(
+    ast: list[dict[str, str | None]],
+) -> str:
+    vie_parts = []
+    initial_mapping = hepburnRuleStrong.INITIAL_MAPPING
+    nucleus_mapping = hepburnRuleStrong.NUCLEUS_MAPPING
+    ending_mapping = hepburnRuleStrong.ENDING_CONSONANT_MAPPING
+    nasal_mapping = hepburnRuleStrong.NASAL_REALIZATION_MAPPING
+
+    for syllable in ast:
+        initial = syllable.get("initial")
+        nucleus = syllable.get("nucleus")
+        ending = syllable.get("ending")
+        contextual_initials = (
+            hepburnRuleStrong.CONTEXTUAL_INITIAL_MAPPING
+        )
+        contextual_initial = contextual_initials.get(
+            (initial or "", nucleus or "")
+        )
+
+        if contextual_initial is not None:
+            mapped_initial = contextual_initial
+        elif initial:
+            mapped_initial = (
+                ""
+                if initial == "y"
+                else initial_mapping.get(initial)
+            )
+            if mapped_initial is None and initial.endswith("y"):
+                mapped_initial = initial_mapping.get(initial[:-1])
+            if mapped_initial is None:
+                raise ValueError(
+                    f"no Hepburn initial mapping for {initial!r}"
+                )
+        else:
+            mapped_initial = ""
+
+        mapped_nucleus = "".join(
+            nucleus_mapping.get(character, character)
+            for character in nucleus or ""
+        )
+        if contextual_initial is None and (
+            initial == "y"
+            or (
+                initial
+                and initial.endswith("y")
+                and initial not in {"ny", "jy"}
+            )
+        ):
+            mapped_nucleus = "i" + mapped_nucleus
+
+        nasal_realization = syllable.get("nasal_realization")
+        if ending == "n" and nasal_realization:
+            mapped_ending = nasal_mapping[
+                nasal_realization
+            ]
+        else:
+            mapped_ending = ending_mapping.get(ending or "", "")
+
+        vie_parts.append(mapped_initial + mapped_nucleus + mapped_ending)
+
+    return "-".join(vie_parts)
+
+
+def hepburn_to_vie(
+    hepburn: str,
+    *,
+    mode: RuleMode,
+) -> dict:
+    """Convert Hepburn text with nasal context across adjacent words.
+
+    Doubled consonants are not interpreted as moraic Q; written long-vowel
+    symbols are mapped by the existing Japanese vowel table.
+    """
+    if mode not in {"weak", "strong"}:
+        raise ValueError(f"mode must be 'weak' or 'strong', got {mode!r}")
+
+    matches = list(_HEPBURN_WORD_RE.finditer(hepburn))
+    parsed_words = []
+    for match in matches:
+        try:
+            parsed_words.append(parse_hepburn(match.group()))
+        except HepburnParseError as error:
+            raise ValueError(
+                f"could not parse Hepburn input: {match.group()!r}"
+            ) from error
+
+    for word_index, word_ast in enumerate(parsed_words):
+        next_word_ast = None
+        if word_index + 1 < len(parsed_words):
+            gap = hepburn[
+                matches[word_index].end():matches[word_index + 1].start()
+            ]
+            if gap.isspace():
+                next_word_ast = parsed_words[word_index + 1]
+
+        for syllable_index, syllable in enumerate(word_ast):
+            if syllable.get("ending") != "n":
+                continue
+
+            following = next(
+                (
+                    item
+                    for item in word_ast[syllable_index + 1:]
+                    if item.get("initial") or item.get("nucleus")
+                ),
+                None,
+            )
+            if following is None and next_word_ast:
+                following = next(
+                    (
+                        item
+                        for item in next_word_ast
+                        if item.get("initial") or item.get("nucleus")
+                    ),
+                    None,
+                )
+            syllable["nasal_realization"] = _hepburn_nasal_realization(
+                following
+            )
+
+    output_parts = []
+    ast = []
+    cursor = 0
+    for match, word_ast in zip(matches, parsed_words):
+        output_parts.append(hepburn[cursor:match.start()])
+        word = match.group()
+        vie_word = _convert_hepburn_word(word_ast)
+        if word.isupper():
+            vie_word = vie_word.upper()
+        elif word[:1].isupper():
+            vie_word = vie_word[:1].upper() + vie_word[1:]
+        output_parts.append(vie_word)
+        ast.extend(word_ast)
+        cursor = match.end()
+    output_parts.append(hepburn[cursor:])
+
+    return {
+        "hepburn": hepburn,
+        "ast": ast,
+        "vie": "".join(output_parts),
+    }
 
 
 def pinyin_to_vie(
