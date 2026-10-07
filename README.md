@@ -58,6 +58,23 @@ Example output:
 bông-ʒuʁ tul-môngd
 ```
 
+### Convert a text file
+
+Use `--input-file` and `--output-file` to process a UTF-8 text file in one run.
+Each non-empty input line is converted once and written with its original text,
+IPA, strong spelling, and weak spelling:
+
+```sh
+python main.py --language de \
+  --input-file input.txt \
+  --output-file result.txt
+```
+
+The output directory is created automatically. You can also run the test corpus
+processor with `python test/test.py` when your corpus is organized under
+`test/testcases/<language>/`; it writes corresponding files under
+`test/generatedResult/`.
+
 ## Languages
 
 Select the input language with `-l` or `--language`:
@@ -151,5 +168,3 @@ This project is released into the public domain. See [LICENSE](LICENSE).
 Based on @vuadu/ipa-to-vie by Rezza Inc.
 Original: https://github.com/vuadu/ipa-to-vie
 Licensed under MIT.
-
-

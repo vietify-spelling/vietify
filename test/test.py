@@ -4,16 +4,20 @@ import sys
 
 
 TEST_DIR = Path(__file__).resolve().parent
-MAIN_PY = TEST_DIR / "main.py"
+MAIN_PY = TEST_DIR.parent / "main.py"
 TESTCASES_DIR = TEST_DIR / "testcases"
 RESULT_DIR = TEST_DIR / "generatedResult"
 
 
-def run_main(text: str, language: str, mode: str) -> str | None:
+def process_file(input_file: Path, language: str) -> None:
     """
-    Run main.py and return stdout.
-    Return None when conversion fails.
+    Process one txt file; every non-empty line is one test case.
     """
+
+    relative_path = input_file.relative_to(TESTCASES_DIR)
+
+    output_file = RESULT_DIR / relative_path
+    print(f"[FILE] {relative_path}")
 
     try:
         result = subprocess.run(
@@ -22,88 +26,23 @@ def run_main(text: str, language: str, mode: str) -> str | None:
                 str(MAIN_PY),
                 "-l",
                 language,
-                "-m",
-                mode,
-                text,
+                "--input-file",
+                str(input_file),
+                "--output-file",
+                str(output_file),
             ],
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
         )
-
-        if result.returncode != 0:
-            print(
-                f"[ERROR] language={language!r}, mode={mode!r}, "
-                f"text={text!r}\n{result.stderr.strip()}"
-            )
-            return None
-
-        return result.stdout.rstrip("\r\n")
-
     except OSError as error:
-        print(
-            f"[ERROR] Could not run main.py: "
-            f"language={language!r}, mode={mode!r}, error={error}"
-        )
-        return None
+        print(f"  [ERROR] Could not run main.py: {error}")
+        return
 
-
-def process_file(input_file: Path, language: str) -> None:
-    """
-    Process one txt file.
-
-    Every non-empty line in input file is treated as one test case.
-    """
-
-    relative_path = input_file.relative_to(TESTCASES_DIR)
-
-    output_file = RESULT_DIR / relative_path
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"[FILE] {relative_path}")
-
-    output_lines = []
-
-    with input_file.open("r", encoding="utf-8") as file:
-        for line_number, raw_line in enumerate(file, start=1):
-            text = raw_line.rstrip("\r\n")
-
-            # Skip empty lines.
-            if not text.strip():
-                continue
-
-            print(f"  [{line_number}] {text}")
-
-            # Original text.
-            output_lines.append(text)
-
-            # IPA.
-            ipa = run_main(text, language, "ipa")
-
-            if ipa is not None:
-                output_lines.append(ipa)
-
-            # Strong Vietify.
-            strong = run_main(text, language, "strong")
-
-            if strong is not None:
-                output_lines.append(strong)
-            else:
-                output_lines.append("")
-
-            # Weak Vietify.
-            weak = run_main(text, language, "weak")
-
-            if weak is not None:
-                output_lines.append(weak)
-            else:
-                output_lines.append("")
-
-    output_file.write_text(
-        "\n".join(output_lines) + "\n",
-        encoding="utf-8",
-    )
+    if result.returncode != 0:
+        print(f"  [ERROR] {result.stderr.strip()}")
+        return
 
     print(f"  -> {output_file.relative_to(TEST_DIR)}")
 

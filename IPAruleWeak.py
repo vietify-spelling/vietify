@@ -51,6 +51,7 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "ə": "ơ",
     "əj": "ơi",
     "ɛ": "e",
+    "ɒ" : "o",
 
     "ɨ": "ư",
  
@@ -190,9 +191,10 @@ LETTER_MAPPING: dict[str, str] = {
     "t": "t",  
 
     "a": "a",
+    "ɒ" : "o",
     "b": "b",
     "d": "đ",
-    "e": "e",
+    "e": "ê",
     "o": "ô",
     "f": "ph",
     "h": "h",
@@ -211,7 +213,7 @@ LETTER_MAPPING: dict[str, str] = {
 
     "ɔ": "o",
     "ə": "ơ",
-    "ɛ": "ê",
+    "ɛ": "e",
     "l": "l",
 
     "tɹ": "tr",

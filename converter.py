@@ -411,7 +411,15 @@ def _convert_ipa_item(
     IPA item without losing surrounding input context.
     """
     cleaned = _clean_ipa_item(item)
-
+    
+    # Keep numbers unchanged.
+    if re.fullmatch(r"\d+(?:[.,]\d+)*", cleaned):
+        return {
+            "ipa": item,
+            "ast": [],
+            "vie": item,
+        }
+    
     logger.debug(
         "IPA conversion start: item=%r cleaned=%r mode=%s options=%r",
         item,
