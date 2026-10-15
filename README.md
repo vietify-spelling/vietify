@@ -196,6 +196,13 @@ vietify-gui
 Drag-and-drop needs `tkinterdnd2`, installed by the `gui` extra. Without it,
 use **Browse…**.
 
+* The interface is in Vietnamese by default. Use the menu at the top right
+  (🇻🇳 Tiếng Việt / 🇬🇧 English) to switch. In Vietnamese the modes are called
+  *Sát* (weak) and *Việt hóa mạnh* (strong). Each mode has an emoji in both
+  languages. The emoji are drawn from a color emoji font (Noto Color Emoji on
+  Linux, Segoe UI Emoji on Windows, Apple Color Emoji on macOS); if none is
+  installed, the labels show without emoji.
+
 * The speaker button next to the input box reads the pasted text aloud in the
   selected language, using espeak-ng. Press it again to stop. It is not
   available for the `ipa` language, since espeak cannot read IPA.

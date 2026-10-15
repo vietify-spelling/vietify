@@ -3,6 +3,7 @@
 Run with ``vietify-gui`` or ``python -m vietify.gui``. Drag-and-drop of input
 files needs the optional ``tkinterdnd2`` package (``pip install -e ".[gui]"``);
 without it, use the Browse button. The speaker button needs espeak-ng.
+The interface is in Vietnamese by default and can be switched to English.
 """
 
 from __future__ import annotations
@@ -17,13 +18,21 @@ import tkinter.font as tkfont
 
 from PIL import Image, ImageDraw, ImageTk
 
+from .espeak_runtime import configure_espeak
+from .gui_i18n import (
+    DEFAULT_UI_LANGUAGE,
+    LANGUAGE_NAMES,
+    MODES,
+    STRINGS,
+    UI_LANGUAGES,
+)
+from .gui_icons import emoji_image, flag_image
 from .main import (
     LANGUAGE_CHOICES,
     process_text_file,
     text_to_vietify,
     text_to_vietify_all,
 )
-from .espeak_runtime import configure_espeak
 from .tts import speak
 
 try:
@@ -42,21 +51,10 @@ ACCENT = "#1f5eff"
 ACCENT_HOVER = "#1446cc"
 ACCENT_TEXT = "#ffffff"
 
-# (label shown in the list, value used for conversion)
-MODES = (
-    ("IPA + strong + weak (default)", "all"),
-    ("weak", "weak"),
-    ("strong", "strong"),
-    ("ipa", "ipa"),
-)
-LABELS = {"weak": "Weak", "strong": "Strong", "ipa": "IPA"}
 UI_FONTS = ("Noto Sans", "Segoe UI", "DejaVu Sans", "Liberation Sans", "Helvetica")
 MONO_FONTS = ("Noto Sans Mono", "DejaVu Sans Mono", "Consolas", "Courier New")
 UI_SIZE = 15
-DROP_HINT = "Drop a text file here, or use Browse"
-NO_DND_HINT = "Browse for a text file (drag & drop needs tkinterdnd2)"
-
-
+EMOJI_SIZE = 30
 SPEAKER_SIZE = 56
 
 
@@ -140,6 +138,10 @@ class App:
         self.output_file: Path | None = None
         self.jobs: queue.Queue = queue.Queue()
         self.player: subprocess.Popen | None = None
+        self.ui_language = tk.StringVar(value=DEFAULT_UI_LANGUAGE)
+        self.status_key = ("ready", {})
+        self.status_text: str | None = None
+        self.last_rows: list[tuple[str, str]] = []
 
         root.title("Vietify")
         root.geometry(f"{min(1040, root.winfo_screenwidth() - 80)}x{min(1160, root.winfo_screenheight() - 40)}")
@@ -150,86 +152,141 @@ class App:
 
         pad = {"padx": 14, "pady": 5}
 
+        # Top bar: interface language menu (with flags).
+        topbar = ttk.Frame(root)
+        topbar.grid(row=0, column=0, sticky="ew", padx=14, pady=(10, 0))
+        topbar.columnconfigure(0, weight=1)
+        ttk.Label(topbar, text="Vietify", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        self.language_menu_button = ttk.Menubutton(topbar, compound="left")
+        menu = tk.Menu(self.language_menu_button, tearoff=False, font=self.ui)
+        for code, name in UI_LANGUAGES.items():
+            menu.add_radiobutton(
+                label=" " + name,
+                image=flag_image(code),
+                compound="left",
+                variable=self.ui_language,
+                value=code,
+                command=self._apply_language,
+            )
+        self.language_menu_button["menu"] = menu
+        self.language_menu_button.grid(row=0, column=1, sticky="e")
+
         # Text input, with the speaker button beside its label.
         header = ttk.Frame(root)
-        header.grid(row=0, column=0, sticky="ew", **pad)
+        header.grid(row=1, column=0, sticky="ew", **pad)
         header.columnconfigure(0, weight=1)
-        ttk.Label(header, text="Text to convert", style="Heading.TLabel").grid(
-            row=0, column=0, sticky="w"
-        )
+        self.text_heading = ttk.Label(header, style="Heading.TLabel")
+        self.text_heading.grid(row=0, column=0, sticky="w")
         self.speaker = SpeakerButton(header, self.toggle_speech)
         self.speaker.grid(row=0, column=1, sticky="e")
 
         self.text = tk.Text(root, height=6, wrap="word", **self._text_colors(self.ui))
-        self.text.grid(row=1, column=0, sticky="nsew", **pad)
+        self.text.grid(row=2, column=0, sticky="nsew", **pad)
         self.text.bind("<Control-Return>", lambda _event: self.convert())
         self._enable_drop(self.text)
 
         # File input (drag here or browse)
         file_frame = ttk.Frame(root)
-        file_frame.grid(row=2, column=0, sticky="ew", **pad)
+        file_frame.grid(row=3, column=0, sticky="ew", **pad)
         file_frame.columnconfigure(0, weight=1)
         self.drop_label = tk.Label(
-            file_frame,
-            text=DROP_HINT if DND_FILES else NO_DND_HINT,
-            bg=MUTED,
-            fg="#444444",
-            padx=10,
-            pady=9,
-            anchor="w",
+            file_frame, bg=MUTED, fg="#444444", padx=10, pady=9, anchor="w"
         )
         self.drop_label.grid(row=0, column=0, sticky="ew")
         self._enable_drop(self.drop_label)
-        ttk.Button(file_frame, text="Browse", command=self.browse_input).grid(
-            row=0, column=1, padx=(8, 0)
-        )
-        ttk.Button(file_frame, text="Clear", command=self.clear_input).grid(
-            row=0, column=2, padx=(8, 0)
-        )
+        self.browse_button = ttk.Button(file_frame, command=self.browse_input)
+        self.browse_button.grid(row=0, column=1, padx=(8, 0))
+        self.clear_button = ttk.Button(file_frame, command=self.clear_input)
+        self.clear_button.grid(row=0, column=2, padx=(8, 0))
 
         # Options: scrollable language list and output-mode list
         options = ttk.Frame(root)
-        options.grid(row=3, column=0, sticky="ew", **pad)
+        options.grid(row=4, column=0, sticky="ew", **pad)
         options.columnconfigure((0, 1), weight=1)
-
-        ttk.Label(options, text="Language", style="Heading.TLabel").grid(
-            row=0, column=0, sticky="w", padx=(0, 8)
-        )
-        ttk.Label(options, text="Output mode", style="Heading.TLabel").grid(
-            row=0, column=1, sticky="w"
-        )
-        self.language_list = self._scroll_list(options, LANGUAGE_CHOICES, 0, "en-us")
-        self.mode_list = self._scroll_list(
-            options, [label for label, _ in MODES], 1, MODES[0][0]
-        )
+        self.language_heading = ttk.Label(options, style="Heading.TLabel")
+        self.language_heading.grid(row=0, column=0, sticky="w", padx=(0, 8))
+        self.mode_heading = ttk.Label(options, style="Heading.TLabel")
+        self.mode_heading.grid(row=0, column=1, sticky="w")
+        self.language_tree = self._scroll_tree(options, 0)
+        self.mode_tree = self._scroll_tree(options, 1)
 
         # Output file and convert
         actions = ttk.Frame(root)
-        actions.grid(row=4, column=0, sticky="ew", **pad)
+        actions.grid(row=5, column=0, sticky="ew", **pad)
         actions.columnconfigure(1, weight=1)
-        ttk.Button(actions, text="Output file", command=self.choose_output).grid(row=0, column=0)
-        self.output_label = ttk.Label(actions, text="(not set)", anchor="w")
+        self.output_button = ttk.Button(actions, command=self.choose_output)
+        self.output_button.grid(row=0, column=0)
+        self.output_label = ttk.Label(actions, anchor="w")
         self.output_label.grid(row=0, column=1, sticky="ew", padx=8)
         self.convert_button = ttk.Button(
-            actions,
-            text="Convert  (Ctrl+Enter)",
-            style="Accent.TButton",
-            command=self.convert,
+            actions, style="Accent.TButton", command=self.convert
         )
         self.convert_button.grid(row=0, column=2)
 
         # Results
         self.results = ttk.Frame(root)
-        self.results.grid(row=5, column=0, sticky="nsew", **pad)
+        self.results.grid(row=6, column=0, sticky="nsew", **pad)
         self.results.columnconfigure(0, weight=1)
-        root.rowconfigure(5, weight=1)
+        root.rowconfigure(6, weight=1)
 
-        self.status = tk.StringVar(value="Paste text, or drop/browse a file.")
+        self.status = tk.StringVar()
         ttk.Label(root, textvariable=self.status, style="Status.TLabel").grid(
-            row=6, column=0, sticky="ew", padx=14, pady=(0, 10)
+            row=7, column=0, sticky="ew", padx=14, pady=(0, 10)
         )
 
+        self._apply_language()
         self.root.after(50, self._poll_jobs)
+
+    # ----- translation ----------------------------------------------------
+
+    def t(self, key: str, **values) -> str:
+        return STRINGS[self.ui_language.get()][key].format(**values)
+
+    def set_status(self, key: str, **values) -> None:
+        """Show a translated status line; it is re-translated on language change."""
+        self.status_key = (key, values)
+        self.status_text = None
+        self.status.set(self.t(key, **values))
+
+    def set_status_text(self, text: str) -> None:
+        self.status_text = text
+        self.status.set(text)
+
+    def _apply_language(self) -> None:
+        """Re-label every widget in the selected interface language."""
+        language = self.ui_language.get()
+        self.language_menu_button.configure(
+            text=" " + UI_LANGUAGES[language], image=flag_image(language)
+        )
+        self.text_heading.configure(text=self.t("text_heading"))
+        self.browse_button.configure(text=self.t("browse"))
+        self.clear_button.configure(text=self.t("clear"))
+        self.language_heading.configure(text=self.t("language"))
+        self.mode_heading.configure(text=self.t("output_mode"))
+        self.output_button.configure(text=self.t("output_file"))
+        self.convert_button.configure(text=self.t("convert"))
+        self._refresh_file_labels()
+        self._fill_languages()
+        self._fill_modes()
+        if self.last_rows:
+            self.show_results(self.last_rows)
+        if self.status_text is not None:
+            self.status.set(self.status_text)
+        else:
+            key, values = self.status_key
+            self.status.set(self.t(key, **values))
+
+    def _refresh_file_labels(self) -> None:
+        if self.input_file is not None:
+            self.drop_label.configure(text=self.t("file_label", path=self.input_file))
+        else:
+            self.drop_label.configure(
+                text=self.t("drop_hint" if DND_FILES else "no_dnd_hint")
+            )
+        if self.output_file is not None:
+            self.output_label.configure(text=str(self.output_file))
+        else:
+            self.output_label.configure(text=self.t("not_set"))
 
     # ----- styling --------------------------------------------------------
 
@@ -240,8 +297,9 @@ class App:
         mono_family = next((f for f in MONO_FONTS if f in families), "TkFixedFont")
         self.ui = tkfont.Font(family=ui_family, size=UI_SIZE)
         self.ui_bold = tkfont.Font(family=ui_family, size=UI_SIZE, weight="bold")
+        self.title_font = tkfont.Font(family=ui_family, size=UI_SIZE + 5, weight="bold")
         self.mono = tkfont.Font(family=mono_family, size=UI_SIZE)
-        for name in ("TkDefaultFont", "TkTextFont", "TkHeadingFont"):
+        for name in ("TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"):
             tkfont.nametofont(name).configure(family=ui_family, size=UI_SIZE)
         tkfont.nametofont("TkFixedFont").configure(family=mono_family, size=UI_SIZE)
 
@@ -252,6 +310,7 @@ class App:
         style.configure("TFrame", background=BG)
         style.configure("TLabel", background=BG, foreground=FG)
         style.configure("Heading.TLabel", font=self.ui_bold)
+        style.configure("Title.TLabel", font=self.title_font)
         style.configure("Status.TLabel", foreground="#333333")
         style.configure(
             "TButton",
@@ -275,7 +334,31 @@ class App:
             background=[("active", ACCENT_HOVER), ("disabled", BORDER)],
             foreground=[("disabled", "#777777")],
         )
+        style.configure(
+            "TMenubutton",
+            background=MUTED,
+            foreground=FG,
+            bordercolor=BORDER,
+            padding=(12, 6),
+            relief="flat",
+        )
+        style.map("TMenubutton", background=[("active", BORDER)])
         style.configure("Vertical.TScrollbar", background=MUTED, troughcolor=BG)
+        style.configure(
+            "Treeview",
+            font=self.ui,
+            rowheight=max(44, EMOJI_SIZE + 12),
+            background=BG,
+            fieldbackground=BG,
+            foreground=FG,
+            bordercolor=BORDER,
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", ACCENT)],
+            foreground=[("selected", ACCENT_TEXT)],
+        )
+        style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
 
     def _text_colors(self, font: tkfont.Font) -> dict:
         return {
@@ -295,36 +378,45 @@ class App:
 
     # ----- widget helpers -------------------------------------------------
 
-    def _scroll_list(
-        self, parent: ttk.Frame, items, column: int, default: str
-    ) -> tk.Listbox:
-        frame = ttk.Frame(parent)
+    def _scroll_tree(self, parent: ttk.Frame, column: int) -> ttk.Treeview:
+        """A scrollable single-select list that can show an image beside each row."""
+        frame = ttk.Frame(parent, borderwidth=1, relief="solid")
         frame.grid(row=1, column=column, sticky="nsew", padx=(0, 8 if column == 0 else 0))
-        listbox = tk.Listbox(
-            frame,
-            height=7,
-            font=self.ui,
-            exportselection=False,
-            bg=BG,
-            fg=FG,
-            selectbackground=ACCENT,
-            selectforeground=ACCENT_TEXT,
-            highlightthickness=1,
-            highlightbackground=BORDER,
-            highlightcolor=ACCENT,
-            relief="flat",
-            activestyle="none",
-        )
-        scroll = ttk.Scrollbar(frame, orient="vertical", command=listbox.yview)
-        listbox.configure(yscrollcommand=scroll.set)
-        listbox.pack(side="left", fill="both", expand=True)
+        tree = ttk.Treeview(frame, show="tree", selectmode="browse", height=5)
+        tree.column("#0", stretch=True)
+        tree.tag_configure("disabled", foreground="#9aa0a6")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scroll.set)
+        tree.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        for item in items:
-            listbox.insert("end", item)
-        index = list(items).index(default)
-        listbox.selection_set(index)
-        listbox.see(index)
-        return listbox
+        return tree
+
+    def _fill_languages(self) -> None:
+        tree = self.language_tree
+        selected = tree.selection()[0] if tree.selection() else "en-us"
+        names = LANGUAGE_NAMES[self.ui_language.get()]
+        tree.delete(*tree.get_children())
+        for code in LANGUAGE_CHOICES:
+            tree.insert("", "end", iid=code, text=f"{names[code]}  ({code})")
+        tree.selection_set(selected)
+        tree.see(selected)
+
+    def _fill_modes(self) -> None:
+        tree = self.mode_tree
+        selected = tree.selection()[0] if tree.selection() else "all"
+        index = 2 if self.ui_language.get() == "vi" else 1
+        tags = ("disabled",) if self.input_file is not None else ()
+        tree.delete(*tree.get_children())
+        for value, entry in MODES.items():
+            tree.insert(
+                "",
+                "end",
+                iid=value,
+                text="  " + entry[index],
+                image=emoji_image(entry[0], EMOJI_SIZE) or "",
+                tags=tags,
+            )
+        tree.selection_set(selected)
 
     def _enable_drop(self, widget: tk.Widget) -> None:
         if DND_FILES is None:
@@ -332,12 +424,13 @@ class App:
         widget.drop_target_register(DND_FILES)
         widget.dnd_bind("<<Drop>>", self._on_drop)
 
-    def _selected(self, listbox: tk.Listbox) -> int:
-        selection = listbox.curselection()
-        return selection[0] if selection else 0
-
     def _language(self) -> str:
-        return LANGUAGE_CHOICES[self._selected(self.language_list)]
+        selection = self.language_tree.selection()
+        return selection[0] if selection else "en-us"
+
+    def _mode(self) -> str:
+        selection = self.mode_tree.selection()
+        return selection[0] if selection else "all"
 
     # ----- text-to-speech -------------------------------------------------
 
@@ -349,17 +442,17 @@ class App:
 
         text = self.text.get("1.0", "end").strip()
         if not text:
-            self.status.set("Paste text to hear it.")
+            self.set_status("paste_to_hear")
             return
 
         language = self._language()
         try:
             self.player = speak(text, language)
         except (RuntimeError, ValueError) as error:
-            self.status.set(str(error))
+            self.set_status_text(str(error))
             return
         self.speaker.set_playing(True)
-        self.status.set(f"Speaking ({language})…")
+        self.set_status("speaking", language=language)
 
     def _speech_stopped(self) -> None:
         self.player = None
@@ -374,37 +467,42 @@ class App:
 
     def browse_input(self) -> None:
         path = filedialog.askopenfilename(
-            title="Choose a UTF-8 text file",
-            filetypes=[("Text files", "*.txt"), ("All files", "*")],
+            title=self.t("open_title"),
+            filetypes=[
+                (self.t("text_files"), "*.txt"),
+                (self.t("all_files"), "*"),
+            ],
         )
         if path:
             self.set_input(Path(path))
 
     def set_input(self, path: Path) -> None:
         self.input_file = path
-        self.drop_label.configure(text=f"File: {path}")
-        self.mode_list.configure(state="disabled")
-        self.status.set("File input writes IPA, strong and weak, as the CLI does.")
+        self._refresh_file_labels()
+        self.mode_tree.configure(selectmode="none")
+        self._fill_modes()
+        self.set_status("file_mode")
 
     def clear_input(self) -> None:
         self.input_file = None
-        self.drop_label.configure(text=DROP_HINT if DND_FILES else NO_DND_HINT)
-        self.mode_list.configure(state="normal")
-        self.status.set("Paste text, or drop/browse a file.")
+        self._refresh_file_labels()
+        self.mode_tree.configure(selectmode="browse")
+        self._fill_modes()
+        self.set_status("ready")
 
     def choose_output(self) -> None:
         initial = (
             f"{self.input_file.stem}_vietify.txt" if self.input_file else "vietify.txt"
         )
         path = filedialog.asksaveasfilename(
-            title="Save output as",
+            title=self.t("save_title"),
             defaultextension=".txt",
             initialfile=initial,
             initialdir=str(self.input_file.parent) if self.input_file else None,
         )
         if path:
             self.output_file = Path(path)
-            self.output_label.configure(text=str(self.output_file))
+            self._refresh_file_labels()
 
     # ----- conversion -----------------------------------------------------
 
@@ -419,31 +517,31 @@ class App:
             source, output = self.input_file, self.output_file
             self._start(
                 lambda: process_text_file(source, output, language),
-                lambda _result: self.status.set(f"Wrote {output}"),
+                lambda _result: self.set_status("wrote", path=output),
             )
             return
 
         text = self.text.get("1.0", "end").strip()
         if not text:
-            self.status.set("Paste text, or drop/browse a file.")
+            self.set_status("ready")
             return
 
-        mode = MODES[self._selected(self.mode_list)][1]
+        mode = self._mode()
         if mode == "all":
             self._start(
                 lambda: text_to_vietify_all(text, language),
                 lambda rows: self.show_results(
-                    [("IPA", rows[0]), ("Strong", rows[1]), ("Weak", rows[2])]
+                    [("ipa", rows[0]), ("strong", rows[1]), ("weak", rows[2])]
                 ),
             )
         else:
             self._start(
                 lambda: text_to_vietify(text, language, mode),
-                lambda value: self.show_results([(LABELS[mode], value)]),
+                lambda value: self.show_results([(mode, value)]),
             )
 
     def _start(self, job, show) -> None:
-        self.status.set("Working…")
+        self.set_status("working")
         self.convert_button.state(["disabled"])
 
         def worker() -> None:
@@ -460,11 +558,11 @@ class App:
         self.convert_button.state(["!disabled"])
         show(result)
         if self.input_file is None:
-            self.status.set("Done.")
+            self.set_status("done")
 
     def _finish_error(self, error: Exception) -> None:
         self.convert_button.state(["!disabled"])
-        self.status.set("Failed.")
+        self.set_status("failed")
         messagebox.showwarning("Vietify", str(error))
 
     def _poll_jobs(self) -> None:
@@ -476,17 +574,24 @@ class App:
             callback()
         if self.player is not None and self.player.poll() is not None:
             self._speech_stopped()
-            self.status.set("Done.")
+            self.set_status("done")
         self.root.after(50, self._poll_jobs)
 
     def show_results(self, rows: list[tuple[str, str]]) -> None:
+        """Show result boxes. Each row is (mode key, text), headed by its emoji."""
+        self.last_rows = rows
         for child in self.results.winfo_children():
             child.destroy()
 
-        for row, (label, value) in enumerate(rows):
-            ttk.Label(self.results, text=label, style="Heading.TLabel").grid(
-                row=row * 2, column=0, sticky="w"
+        for row, (key, value) in enumerate(rows):
+            heading = ttk.Label(
+                self.results,
+                text=" " + self.t(f"result_{key}"),
+                image=emoji_image(MODES[key][0], 26) or "",
+                compound="left",
+                style="Heading.TLabel",
             )
+            heading.grid(row=row * 2, column=0, sticky="w")
             lines = max(1, len(value) // 52 + 1)
             box = tk.Text(self.results, height=lines, wrap="word", **self._text_colors(self.mono))
             box.insert("1.0", value)
