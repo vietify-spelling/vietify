@@ -9,4 +9,7 @@ test/testcases/ru/packOfCigarettes.txt
 
 test/generatedResult
 
-CLAUDE.md
+CLAUDE.mddist/
+build/
+dist/
+*.egg-info/

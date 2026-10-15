@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import shutil
+from .espeak_runtime import espeak_binary, espeak_data_args, espeak_env
+
 import subprocess
 
 # CLI language code -> espeak-ng voice. "ipa" has no voice: espeak cannot read IPA.
@@ -18,10 +19,6 @@ VOICES: dict[str, str] = {
 }
 
 
-def espeak_binary() -> str | None:
-    return shutil.which("espeak-ng") or shutil.which("espeak")
-
-
 def speak(text: str, language: str) -> subprocess.Popen:
     """Start speaking text in the language's voice and return the process."""
     binary = espeak_binary()
@@ -30,4 +27,5 @@ def speak(text: str, language: str) -> subprocess.Popen:
     voice = VOICES.get(language)
     if voice is None:
         raise ValueError(f"no speech voice for language {language!r}")
-    return subprocess.Popen([binary, "-v", voice, "--", text])
+    command = [binary, *espeak_data_args(), "-v", voice, "--", text]
+    return subprocess.Popen(command, env=espeak_env())

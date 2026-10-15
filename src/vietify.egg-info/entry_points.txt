@@ -1,3 +1,0 @@
-[console_scripts]
-vietify = vietify.main:main
-vietify-gui = vietify.gui:main

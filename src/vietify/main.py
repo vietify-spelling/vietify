@@ -6,6 +6,7 @@ from typing import Literal, cast
 
 from phonemizer import phonemize
 
+from .espeak_runtime import configure_espeak
 from .converter import (
     _apply_french_liaison,
     hepburn_to_vie,
@@ -312,6 +313,7 @@ def process_text_file(
         )
     
 def main() -> int:
+    configure_espeak()
     parser = argparse.ArgumentParser(
         description=(
             "Convert text or IPA pronunciation to Vietnamese spelling."

@@ -23,6 +23,7 @@ from .main import (
     text_to_vietify,
     text_to_vietify_all,
 )
+from .espeak_runtime import configure_espeak
 from .tts import speak
 
 try:
@@ -494,6 +495,7 @@ class App:
 
 
 def main() -> int:
+    configure_espeak()
     root = TkinterDnD.Tk() if TkinterDnD else tk.Tk()
     App(root)
     root.mainloop()

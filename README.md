@@ -152,9 +152,9 @@ Output:
 ```text
 dʒəpan ɪz tənɪŋ fʊtstɛps ɪntʊ ɪlɛktɹɪsɪti
 
-dʒơ-pan i-z tơ-ning phut-x-tep-x in-tu i-lech-tri-xi-ty
+dʒơ-pan iz tơ-ning phut-x-tep-x in-tu i-lech-tri-xi-ty
 
-dờ-pờ ì-dờ thờ-nình phụt-xờ-thẹp-xờ ìn-thù ì-lệch-trì-xì-thỳ
+giơ-pan it tơ-ning phut-xơ-tep-xơ in-tu i-lech-tri-xi-ty
 ```
 
 The `ipa` mode is useful for inspecting the pronunciation produced by the phonemizer before Vietnamese conversion.
@@ -200,10 +200,60 @@ use **Browse…**.
   selected language, using espeak-ng. Press it again to stop. It is not
   available for the `ipa` language, since espeak cannot read IPA.
 
+## Desktop app
+
+You can build a standalone desktop app that needs no Python or espeak-ng
+install. It bundles espeak-ng, tkinterdnd2 and the GUI. Build it on the OS you
+want to ship for: PyInstaller does not cross-compile.
+
+Common steps (all systems):
+
+1. Install Python 3.10 or newer and espeak-ng (per-system steps below).
+2. From the project folder, install the GUI and build tools:
+   `python -m pip install -e ".[gui,build]"`
+3. Build: `python packaging/build.py`
+4. The app is in `dist/` and a zip is written next to it.
+
+**Windows**
+
+1. Install [eSpeak NG](https://github.com/espeak-ng/espeak-ng/releases) with
+   the Windows installer (default location `C:\Program Files\eSpeak NG`).
+2. In PowerShell from the project folder:
+   `py -m pip install -e ".[gui,build]"` then `py packaging\build.py`.
+3. Run `dist\Vietify\Vietify.exe`. The first run may show a SmartScreen
+   warning because the app is unsigned: choose *More info → Run anyway*.
+
+**Linux (Debian/Ubuntu)**
+
+1. `sudo apt install espeak-ng python3-tk python3-venv`
+2. `python3 -m venv .venv && .venv/bin/python -m pip install -e ".[gui,build]"`
+3. `.venv/bin/python packaging/build.py`
+4. Run `dist/Vietify/Vietify`. Copy the `dist/Vietify` folder to share it.
+
+**macOS**
+
+1. `brew install espeak-ng python-tk`
+2. `python3 -m pip install -e ".[gui,build]"` then `python3 packaging/build.py`
+3. Open `dist/Vietify.app`. The app is unsigned, so the first launch needs
+   *right-click → Open*, or `xattr -dr com.apple.quarantine dist/Vietify.app`.
+
+Override the espeak-ng files with `ESPEAK_NG_LIB`, `ESPEAK_NG_BIN` and
+`ESPEAK_NG_DATA` if they are installed in a non-standard place.
+
+To check a build, run `dist/Vietify/Vietify --self-test` (or
+`dist/Vietify.app/Contents/MacOS/Vietify --self-test`). It converts a sample,
+runs the bundled espeak-ng, and prints `SELF-TEST OK`.
+
+Notes:
+- Only Linux was built and tested. Windows and macOS need a build on that
+  system; the same script covers them, but it has not been run there.
+- The app folder is about 120 MB (mostly Python, numpy and Tcl/Tk); the espeak-ng data is trimmed to the languages Vietify uses.
+- Distributing the app means distributing espeak-ng, so the GPL terms in
+  [License](#license) apply.
+
 ## License
 
-This project is released into the public domain. See [LICENSE](LICENSE).
-
-Based on @vuadu/ipa-to-vie by Rezza Inc.
-Original: https://github.com/vuadu/ipa-to-vie
-Licensed under MIT.
+Vietify is free software under the [GNU GPL v3 or later](LICENSE). It is
+based on [ipa-to-vie](https://github.com/vuadu/ipa-to-vie) (MIT) and uses
+espeak-ng (GPL-3.0). See [THIRD_PARTY.md](THIRD_PARTY.md) for all components
+and the MIT notice that must be kept.
