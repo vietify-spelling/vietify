@@ -131,6 +131,22 @@ NUCLEUS_MAPPING: dict[str, str] = {
 }
 
 
+# Coda consonants spelled as a Vietnamese onset before an epenthetic ơ.
+NASAL_CODA_ONSETS: dict[str, str] = {
+    "t": "t",
+    "d": "đ",
+    "k": "k",
+    "ɡ": "ɡ",
+    "p": "p",
+    "b": "b",
+    "v": "v",
+    "f": "ph",
+    "s": "x",
+    "z": "z",
+    "l": "l",
+    "ʁ": "ɡ",
+}
+
 SYLLABLE_ENDING_MAPPING: dict[str, str] = {
     **NUCLEUS_MAPPING,
     **{
@@ -160,9 +176,24 @@ SYLLABLE_ENDING_MAPPING: dict[str, str] = {
         for ending, mapped_ending in ENDING_CONSONANT_MAPPING.items()
     },
 
+    # nasal vowel + coda: strong adds an epenthetic ơ after the coda
+    # (ɔ̃d → ông-đơ). Weak keeps the coda attached.
+    **{
+        nasal + coda: NUCLEUS_MAPPING[nasal] + "-" + onset + "ơ"
+        for nasal in ("ɑ̃", "ɛ̃", "ɔ̃", "œ̃")
+        for coda, onset in NASAL_CODA_ONSETS.items()
+    },
+    # nasal vowel + nasal coda: the nasal vowel absorbs the coda (mɔ̃n → mông)
+    **{
+        nasal + coda: NUCLEUS_MAPPING[nasal]
+        for nasal in ("ɑ̃", "ɛ̃", "ɔ̃", "œ̃")
+        for coda in ("n", "m", "ŋ")
+    },
+
     # Overrides
-    "ɔŋ": "oong", 
+    "ɔŋ": "oong",
     "jəŋ": "iêng",
+
 
     #  rule : ich/ac
     "ec": "ach",

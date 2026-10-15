@@ -11,7 +11,6 @@ It can phonemize:
 * German
 * Mandarin Chinese
 * Japanese
-* Korean
 * Russian
 * Potentially other languages supported by eSpeak NG
 
@@ -35,13 +34,13 @@ sudo apt install espeak-ng
 Install Python dependencies:
 
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 Run Vietify from the project directory:
 
 ```sh
-python main.py "Hello world"
+vietify "Hello world"
 ```
 
 The default input language is English, and the default conversion mode is `weak`.
@@ -49,7 +48,7 @@ The default input language is English, and the default conversion mode is `weak`
 For multi-word input, wrap the text in quotes so it is passed as a single argument:
 
 ```sh
-python main.py --language fr --mode weak "Bonjour tout le monde"
+vietify --language fr --mode weak "Bonjour tout le monde"
 ```
 
 Example output:
@@ -65,35 +64,52 @@ Each non-empty input line is converted once and written with its original text,
 IPA, strong spelling, and weak spelling:
 
 ```sh
-python main.py --language de \
+vietify --language de \
   --input-file input.txt \
   --output-file result.txt
 ```
 
 The output directory is created automatically. You can also run the test corpus
-processor with `python test/test.py` when your corpus is organized under
-`test/testcases/<language>/`; it writes corresponding files under
-`test/generatedResult/`.
+processor with `python test/test.py`. It converts every `.txt` file under
+`test/testcases/<language>/` and writes corresponding files under
+`test/generatedResult/<language>/`.
+
+The corpus has no expected output. Review the generated files by eye. Each
+language directory contains:
+
+* `allPhonemes_*.txt`: sentences covering the phoneme inventory.
+* `phonemeCombinations_*.txt`: longer text covering phoneme combinations, one
+  sentence per line.
+
+Warnings go to stderr and do not stop the run. `test/test.py` prints them as
+`[WARN]` lines. Two cases trigger them:
+
+* espeak output contains characters it cannot encode (`?` or U+FFFD). These
+  characters are dropped from the word, so the rest of the word is still
+  converted.
+* the input is mixed-language and espeak adds `(xx)` markers. The token is
+  left unconverted.
 
 ## Languages
 
 Select the input language with `-l` or `--language`:
 
-| Option | Language                      |
-| ------ | ----------------------------- |
-| `en`   | English (US phonemizer voice) |
-| `fr`   | French                        |
-| `de`   | German                        |
-| `ch`   | Mandarin Chinese pinyin       |
-| `ja`   | Japanese                      |
-| `ko`   | Korean                        |
-| `ru`   | Russian                       |
-| `ipa`  | Input is already IPA          |
+| Option    | Language                      |
+| --------- | ----------------------------- |
+| `en-us`   | English (US, default)         |
+| `en-gb`   | English (British)             |
+| `en-au`   | English (Australian)          |
+| `fr`      | French                        |
+| `de`      | German                        |
+| `ch`      | Mandarin Chinese pinyin       |
+| `ja`      | Japanese                      |
+| `ru`      | Russian                       |
+| `ipa`     | Input is already IPA          |
 
 For example:
 
 ```sh
-python main.py -l fr "Bonjour"
+vietify -l fr "Bonjour"
 ```
 
 For Mandarin, provide pinyin rather than Chinese characters. Pinyin tone
@@ -101,14 +117,14 @@ marks and trailing tone numbers (1-5, with 0 also accepted for neutral tone)
 are supported. Separate syllables with spaces:
 
 ```sh
-python main.py -l ch -m weak "nǐ hǎo"
-python main.py -l ch -m strong "ni3 hao3"
+vietify -l ch -m weak "nǐ hǎo"
+vietify -l ch -m strong "ni3 hao3"
 ```
 
 If you already have an IPA transcription, use `ipa` to skip text phonemization:
 
 ```sh
-python main.py -l ipa "ˈwɛt"
+vietify -l ipa "ˈwɛt"
 ```
 
 ## Conversion Modes
@@ -124,11 +140,11 @@ Select a mode with `-m` or `--mode`:
 ### Examples
 
 ```sh
-python main.py --mode ipa "Japan is Turning Footsteps Into Electricity"
+vietify --mode ipa "Japan is Turning Footsteps Into Electricity"
 
-python main.py --mode weak "Japan is Turning Footsteps Into Electricity"
+vietify --mode weak "Japan is Turning Footsteps Into Electricity"
 
-python main.py --mode strong "Japan is Turning Footsteps Into Electricity"
+vietify --mode strong "Japan is Turning Footsteps Into Electricity"
 ```
 
 Output:
@@ -160,6 +176,25 @@ print(results[0]["vie"])
 ```
 
 For pronunciation from ordinary text, use the CLI. Text phonemization is handled by the `phonemizer` package using eSpeak NG.
+
+## GUI
+
+A minimal Tkinter window covers the same options as the CLI:
+
+```sh
+python -m pip install -e ".[gui]"
+vietify-gui
+```
+
+* Paste text into the box, pick a language and an output mode, then press
+  Ctrl+Enter or **Convert**. The default mode shows IPA, strong and weak
+  results below the input.
+* Drop a `.txt` file onto the window or use **Browse…**. File input uses the
+  batch path, so it always writes IPA, strong and weak, as `--input-file`
+  does. **Output file…** opens a save dialog.
+
+Drag-and-drop needs `tkinterdnd2`, installed by the `gui` extra. Without it,
+use **Browse…**.
 
 ## License
 

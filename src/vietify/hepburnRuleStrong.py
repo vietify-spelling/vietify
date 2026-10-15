@@ -79,12 +79,12 @@ CONTEXTUAL_INITIAL_MAPPING: dict[tuple[str, str], str] = {
     ("dy", "a"): "j",
     ("dy", "u"): "j",
     ("dy", "o"): "j",
-    # /h/ weakens to [ç] or [ɸ] before /i, u/ and in yōon.
-    ("h", "i"): "kh",
+    # /h/ is palatalized before /i/ and in yōon; /hu/ weakens to [ɸ].
+    ("h", "i"): "hy",
     ("h", "u"): "ph",
-    ("hy", "a"): "kh",
-    ("hy", "u"): "kh",
-    ("hy", "o"): "kh",
+    ("hy", "a"): "hy",
+    ("hy", "u"): "hy",
+    ("hy", "o"): "hy",
 }
 
 

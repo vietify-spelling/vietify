@@ -1,7 +1,7 @@
 import unittest
 
-from ..converter import hepburn_to_vie
-from ..main import text_to_vietify
+from vietify.converter import hepburn_to_vie
+from vietify.main import text_to_vietify
 
 
 class HepburnConversionTests(unittest.TestCase):

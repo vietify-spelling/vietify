@@ -1,30 +1,17 @@
 import argparse
+import logging
 import re
-import sys
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from phonemizer import phonemize
 
-# from .converter import ipa_to_vie
-from typing import cast
-
-if __package__:
-    from .converter import (
-        _apply_french_liaison,
-        hepburn_to_vie,
-        ipa_to_vie,
-        pinyin_to_vie,
-    )
-else:
-    # Allow ``python main.py`` when this file is run from the package folder.
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from vietify.converter import (
-        _apply_french_liaison,
-        hepburn_to_vie,
-        ipa_to_vie,
-        pinyin_to_vie,
-    )
+from .converter import (
+    _apply_french_liaison,
+    hepburn_to_vie,
+    ipa_to_vie,
+    pinyin_to_vie,
+)
 
 
 PHONEMIZER_LANGUAGES = {
@@ -34,9 +21,7 @@ PHONEMIZER_LANGUAGES = {
 
     "fr": "fr-fr",
     "de": "de",
-    "ru": "ru", 
-
-    # "ko": "ko",
+    "ru": "ru",
 }
 
 
@@ -46,7 +31,11 @@ def normalize_phonemized_ipa(
     *,
     preserve_nasalization: bool = False,
 ) -> str:
-    normalized = ipa.replace("ː", "").replace('"', "")
+    # ʔ is ignored entirely: it is dropped rather than converted.
+    normalized = ipa.replace("ː", "").replace('"', "").replace("ʔ", "")
+    for consonant in ("n", "m", "l", "ŋ"):
+        # Syllabic consonant (combining vertical line below) -> schwa + consonant.
+        normalized = normalized.replace(consonant + "̩", "ə" + consonant)
     if not preserve_nasalization:
         normalized = normalized.replace("̃", "")
 
@@ -96,6 +85,24 @@ def normalize_phonemized_ipa(
 
 OutputMode = Literal["weak", "strong", "ipa"]
 
+LANGUAGE_CHOICES = (
+    "en-gb",
+    "en-us",
+    "en-au",
+    "fr",
+    "de",
+    "ru",
+    "ch",
+    "ja",
+    "ipa",
+)
+MODE_CHOICES = ("weak", "strong", "ipa")
+
+logger = logging.getLogger(__name__)
+
+# Characters espeak emits when it cannot encode a symbol (e.g. "hamb??k").
+_ESPEAK_UNDECODABLE = ("?", "�")
+
 def text_to_vietify(
     text: str,
     language: str,
@@ -110,21 +117,14 @@ def text_to_vietify(
     return _convert_pronunciation(pronunciation, language, mode)
 
 
-def text_to_vietify_modes(
-    text: str,
-    language: str,
-) -> tuple[str, str, str]:
-    """Return IPA, strong, and weak output while phonemizing only once."""
+def text_to_vietify_all(text: str, language: str) -> tuple[str, str, str]:
+    """Return (IPA, strong, weak) for text, phonemizing only once."""
     pronunciation = _text_to_pronunciation(text, language)
-    normalized_pronunciation = _normalize_pronunciation(
-        pronunciation,
-        language,
-    )
-
+    normalized = _normalize_pronunciation(pronunciation, language)
     return (
         pronunciation,
-        _convert_pronunciation(normalized_pronunciation, language, "strong"),
-        _convert_pronunciation(normalized_pronunciation, language, "weak"),
+        _convert_pronunciation(normalized, language, "strong"),
+        _convert_pronunciation(normalized, language, "weak"),
     )
 
 
@@ -179,6 +179,29 @@ def _convert_pronunciation(
 
         leading, pronunciation, trailing = match.groups()
 
+        if "(" in pronunciation or ")" in pronunciation:
+            logger.warning(
+                "language-switch markers in %r (non-pure input); "
+                "leaving token unconverted",
+                word,
+            )
+            converted_words.append({"vie": word})
+            continue
+
+        if any(char in pronunciation for char in _ESPEAK_UNDECODABLE):
+            logger.warning(
+                "espeak output contains undecodable characters in %r; "
+                "ignoring them",
+                word,
+            )
+            pronunciation = "".join(
+                char for char in pronunciation
+                if char not in _ESPEAK_UNDECODABLE
+            )
+            if not pronunciation:
+                converted_words.append({"vie": leading + trailing})
+                continue
+
         if language == "ch":
             vie = pinyin_to_vie(
                 pronunciation,
@@ -207,61 +230,6 @@ def _convert_pronunciation(
 
     return " ".join(word["vie"] for word in converted_words)
 
-
-# def process_text_file(
-#     input_file: Path,
-#     output_file: Path,
-#     language: str,
-# ) -> None:
-#     """Write IPA, strong, and weak results for every non-empty input line."""
-#     output_lines = []
-#     errors = []
-
-#     with input_file.open("r", encoding="utf-8") as file:
-#         for line_number, raw_line in enumerate(file, start=1):
-#             text = raw_line.rstrip("\r\n")
-#             if not text.strip():
-#                 continue
-
-#             try:
-#                 pronunciation = _text_to_pronunciation(text, language)
-#             except (OSError, RuntimeError, ValueError) as error:
-#                 errors.append(f"line {line_number} IPA: {error}")
-#                 output_lines.extend((text, "", "", "", "\n"))
-#                 continue
-
-#             try:
-#                 normalized = _normalize_pronunciation(
-#                     pronunciation,
-#                     language,
-#                 )
-#             except (OSError, RuntimeError, ValueError) as error:
-#                 errors.append(f"line {line_number} normalization: {error}")
-#                 normalized = None
-
-#             results = []
-#             for mode in ("strong", "weak"):
-#                 if normalized is None:
-#                     results.append("")
-#                     continue
-#                 try:
-#                     results.append(
-#                         _convert_pronunciation(normalized, language, mode)
-#                     )
-#                 except (OSError, RuntimeError, ValueError) as error:
-#                     errors.append(f"line {line_number} {mode}: {error}")
-#                     results.append("")
-
-#             output_lines.extend((text, pronunciation, *results, "\n"))
-
-#     output_file.parent.mkdir(parents=True, exist_ok=True)
-#     output_file.write_text(
-#         "\n".join(output_lines) + "\n",
-#         encoding="utf-8",
-#     )
-
-#     if errors:
-#         raise ValueError("conversion errors:\n" + "\n".join(errors))
 
 def process_text_file(
     input_file: Path,
@@ -370,31 +338,20 @@ def main() -> int:
     parser.add_argument(
         "-l",
         "--language",
-        choices=(
-            "en-gb",
-            "en-us",
-            "en-au",
-            "fr",
-            "de",
-            "ru",
-            "ch",
-            "ja",
-            "ko",
-            "ipa",
-        ),
+        choices=LANGUAGE_CHOICES,
         default="en-us",
         help=(
             "Input language: en-gb (British English), en-us (American English), "
             "en-au (Australian English), fr (French), de (German), ru (Russian), "
             "ch (Chinese pinyin), ja (Japanese Hepburn romanization), "
-            "ko (Korean), or ipa (already-transcribed IPA). "
+            "or ipa (already-transcribed IPA). "
             "Default: en-us."
         ),
     )
     parser.add_argument(
         "-m",
         "--mode",
-        choices=("weak", "strong", "ipa"),
+        choices=MODE_CHOICES,
         default=None,
         help=(
             "Output mode: weak, strong, or ipa. "

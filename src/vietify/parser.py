@@ -28,8 +28,19 @@ SyllableEnding =
     / BareDiphthong
     / BareVowel
     
-DiphthongWithEnding = (Diphthong) (EndingConsonant / ApprxEndingConsonant) !(Diphthong / Vowel) 
-VowelWithEnding = Vowel (EndingConsonant / ApprxEndingConsonant) !(Diphthong / Vowel) 
+DiphthongWithEnding = 
+    (Diphthong) (EndingConsonant / ApprxEndingConsonant) !(Diphthong/ NasalVowelNucleus / Vowel) 
+    / NasalVowelWithEnding
+    / NasalVowelNucleus
+
+NasalVowelWithEnding =
+    NasalVowelNucleus (EndingConsonant / ApprxEndingConsonant) !(Diphthong/ NasalVowelNucleus / Vowel)
+
+VowelWithEnding = Vowel (EndingConsonant / ApprxEndingConsonant) !(Diphthong/ NasalVowelNucleus / Vowel) 
+
+NasalVowelNucleus =
+    Glide NasalVowel
+    / NasalVowel
 
 Diphthong = 
     Glide TrueDiphthong
@@ -129,13 +140,16 @@ ApprxEndingConsonant =
     / "ç"
 # other consonant are treated as seperated syllable
 
-Vowel =
+NasalVowel =
     #fr
       "ɑ̃"
     / "ɛ̃"
     / "ɔ̃"
     / "œ̃"
-    / "ø"
+
+Vowel =
+    #fr
+    "ø"
     / "œ"
     / "y"
     ##
@@ -269,7 +283,12 @@ class Visitor(NodeVisitor):
         )
 
     def visit_DiphthongWithEnding(self, node, children):
-        nucleus, ending = children[:2]
+        if node.children[0].expr_name == "NasalVowelNucleus":
+            # Bare nasal nucleus alternative; SyllableEnding wraps the string.
+            return children[0]
+
+        # Ordered choice wraps the sequence in a single child.
+        nucleus, ending = children[0][:2]
         return {
             "nucleus": nucleus,
             "ending": ending,
@@ -333,6 +352,18 @@ class Visitor(NodeVisitor):
         """Return diphthong ending text."""
         return node.text
 
+    def visit_ApprxEndingConsonant(self, node, children):
+        """Return approximate final consonant text."""
+        return node.text
+
+    def visit_NasalVowelNucleus(self, node, children):
+        """Return nasal vowel nucleus text."""
+        return node.text
+
+    def visit_NasalVowel(self, node, children):
+        """Return nasal vowel text."""
+        return node.text
+
     def visit_Stress(self, node, children):
         """Return stress marker text."""
         return node.text
@@ -345,9 +376,6 @@ class Visitor(NodeVisitor):
         """Collapse single-child nodes and preserve multi-child results."""
         if children:
             return children[0] if len(children) == 1 else children
-        return node.text
-
-    def visit_ApprxEndingConsonant(self, node, children):
         return node.text
 
 def parse(text):

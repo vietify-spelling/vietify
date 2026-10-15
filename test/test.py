@@ -4,7 +4,6 @@ import sys
 
 
 TEST_DIR = Path(__file__).resolve().parent
-MAIN_PY = TEST_DIR.parent / "main.py"
 TESTCASES_DIR = TEST_DIR / "testcases"
 RESULT_DIR = TEST_DIR / "generatedResult"
 
@@ -23,7 +22,8 @@ def process_file(input_file: Path, language: str) -> None:
         result = subprocess.run(
             [
                 sys.executable,
-                str(MAIN_PY),
+                "-m",
+                "vietify",
                 "-l",
                 language,
                 "--input-file",
@@ -37,12 +37,15 @@ def process_file(input_file: Path, language: str) -> None:
             errors="replace",
         )
     except OSError as error:
-        print(f"  [ERROR] Could not run main.py: {error}")
+        print(f"  [ERROR] Could not run vietify: {error}")
         return
 
     if result.returncode != 0:
         print(f"  [ERROR] {result.stderr.strip()}")
         return
+
+    for warning in result.stderr.strip().splitlines():
+        print(f"  [WARN] {warning}")
 
     print(f"  -> {output_file.relative_to(TEST_DIR)}")
 

@@ -1,4 +1,4 @@
-__pycache__
+__pycache__/
 .venv/
 
 test/testcases/de/99_Luftballons.txt
@@ -8,3 +8,5 @@ test/testcases/ru/cuckoo.txt
 test/testcases/ru/packOfCigarettes.txt
 
 test/generatedResult
+
+CLAUDE.md
