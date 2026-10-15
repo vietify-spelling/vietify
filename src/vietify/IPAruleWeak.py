@@ -21,6 +21,8 @@ ENDING_CONSONANT_MAPPING: dict[str, str] = {
 
     "l": "l",
     "ɫ": "l",
+    "tʃ": "tʃ",
+    "dʒ": "dʒ",
 
     "ʁ": "ʁ",
 
@@ -38,20 +40,25 @@ NUCLEUS_MAPPING: dict[str, str] = {
     # exact 1-1 correspondant
     "a": "a",
     "aɪ": "ai",
+    "aɪ" : "ai",
     "e": "ê",
     "eɪ": "ây",
     "i": "i",
     "iɛ": "ia",
-    "o": "o",
+    "o": "ô",
     "oʊ": "âu",
+    "əʊ" : "âu",
     "u": "u",
     "uɛ": "oe", ##
     "ɔ": "o",
     "ɔɪ": "oi",
     "ə": "ơ",
     "əj": "ơi",
+    "ɛj": "ây",
     "ɛ": "e",
     "ɒ" : "o",
+    "iə" : "ia",
+    "ɪə": "ia",
 
     "ɨ": "ư",
  
@@ -63,6 +70,7 @@ NUCLEUS_MAPPING: dict[str, str] = {
     #german
     "ɔʏ": "oi",
 
+    "jiə" : "ia",
     "jaʊ": "iau",
     "jeɪ": "iây",
     "ji": "i",
@@ -75,9 +83,12 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "jɛ": "iê",
     "jɪ": "i",
     "jʊ": "iu",
+    "jø": "ia",
 
     "waʊ": "uau",
     "weɪ": "uây",
+    "waɪ" :"uai",
+    "wiə" : "uiê",
     "wi": "ui",
     "woʊ": "uâu",
     "wu": "u",

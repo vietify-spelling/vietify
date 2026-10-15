@@ -117,9 +117,14 @@ _VIE_SYLLABLE_REPLACEMENTS = {
 }
 
 _VIE_SYLLABLE_PATTERN = re.compile(
-    r"wi|wa|wâ|we|wơ|ge|gi(?!a)|gê|qui"
-    # r"wi|wa|wâ|we|wơ|ge|gê|qui"
+    r"wi|wa|wâ|we|wơ|qui"
 )
+
+# g + front vowel is spelled gh everywhere except when the "gi" comes from the
+# fricative/affricate ʒ and dʒ, which keep the plain "gi" spelling.
+_GI_KEEP_ONSETS = {"ʒ", "dʒ"}
+_GH_PATTERN = re.compile(r"ge|gi(?!a)|gê")
+_GH_REPLACEMENTS = {"ge": "ghe", "gi": "ghi", "gê": "ghê"}
 
 _ENDING_REPLACEMENTS = {
     "ki": "ky",
@@ -135,12 +140,18 @@ _ENDING_PATTERN = re.compile(
 )
 
 
-def _replace_vie_syllable_patterns(vie: str) -> str:
+def _replace_vie_syllable_patterns(vie: str, head: str) -> str:
     """Apply spelling substitutions that operate on complete Vie syllables."""
-    return _VIE_SYLLABLE_PATTERN.sub(
+    vie = _VIE_SYLLABLE_PATTERN.sub(
         lambda match: _VIE_SYLLABLE_REPLACEMENTS[match.group(0)],
         vie,
     )
+    if head not in _GI_KEEP_ONSETS:
+        vie = _GH_PATTERN.sub(
+            lambda match: _GH_REPLACEMENTS[match.group(0)],
+            vie,
+        )
+    return vie
 
 
 def _apply_vowel_epenthesis(
@@ -230,6 +241,11 @@ def _build_vie_syllable(
     nucleus = syllable.get("nucleus") or ""
     ending = syllable.get("ending") or ""
 
+    # A glide j before a vowel is part of the nucleus: "ju" → "iu", not "giu".
+    if head == "j" and ("j" + nucleus) in rules.SYLLABLE_ENDING_MAPPING:
+        head = ""
+        nucleus = "j" + nucleus
+
     tail = nucleus + ending
     syllable_ending_mapping = rules.SYLLABLE_ENDING_MAPPING
     if language == "de":
@@ -252,7 +268,7 @@ def _build_vie_syllable(
         )
     )
 
-    return _replace_vie_syllable_patterns(vie), is_null_ending
+    return _replace_vie_syllable_patterns(vie, head), is_null_ending
 
 
 def syllable_to_vie(

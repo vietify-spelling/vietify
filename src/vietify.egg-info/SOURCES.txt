@@ -14,6 +14,7 @@ src/vietify/parser.py
 src/vietify/pinyinParser.py
 src/vietify/pinyinRuleStrong.py
 src/vietify/pinyinRuleWeak.py
+src/vietify/tts.py
 src/vietify.egg-info/PKG-INFO
 src/vietify.egg-info/SOURCES.txt
 src/vietify.egg-info/dependency_links.txt

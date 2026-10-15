@@ -34,6 +34,7 @@ Requires-Dist: phonemizer>=3.4
 Requires-Dist: parsimonious>=0.11
 Provides-Extra: gui
 Requires-Dist: tkinterdnd2>=0.4; extra == "gui"
+Requires-Dist: pillow>=10; extra == "gui"
 Dynamic: license-file
 
 # Vietify
@@ -214,6 +215,29 @@ print(results[0]["vie"])
 ```
 
 For pronunciation from ordinary text, use the CLI. Text phonemization is handled by the `phonemizer` package using eSpeak NG.
+
+## GUI
+
+A minimal Tkinter window covers the same options as the CLI:
+
+```sh
+python -m pip install -e ".[gui]"
+vietify-gui
+```
+
+* Paste text into the box, pick a language and an output mode, then press
+  Ctrl+Enter or **Convert**. The default mode shows IPA, strong and weak
+  results below the input.
+* Drop a `.txt` file onto the window or use **Browse…**. File input uses the
+  batch path, so it always writes IPA, strong and weak, as `--input-file`
+  does. **Output file…** opens a save dialog.
+
+Drag-and-drop needs `tkinterdnd2`, installed by the `gui` extra. Without it,
+use **Browse…**.
+
+* The speaker button next to the input box reads the pasted text aloud in the
+  selected language, using espeak-ng. Press it again to stop. It is not
+  available for the `ipa` language, since espeak cannot read IPA.
 
 ## License
 

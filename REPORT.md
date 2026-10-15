@@ -21,9 +21,10 @@ before changing. `chh`, `trh`, `tsh` are not Vietnamese spellings either.
   asserts nasal assimilation in weak mode, so the current design treats the
   two modes as the same. Decide whether weak should differ (e.g. keep
   `hepburnRuleWeak` with raw spelling) and update the tests to match.
-- No corpus coverage for Japanese. Add `test/testcases/ja/*.txt`.
 - The `ja` path skips phonemization and normalization, so the espeak
   warnings do not apply. Hepburn input with `?` or `(` is not checked.
+- Doubled consonants (sokuon, e.g. `katte`) are not parsed: `hepburn_to_vie`
+  raises `could not parse Hepburn input`. The Japanese corpus avoids them.
 
 
 ## 4. README

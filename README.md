@@ -196,6 +196,10 @@ vietify-gui
 Drag-and-drop needs `tkinterdnd2`, installed by the `gui` extra. Without it,
 use **Browse…**.
 
+* The speaker button next to the input box reads the pasted text aloud in the
+  selected language, using espeak-ng. Press it again to stop. It is not
+  available for the `ipa` language, since espeak cannot read IPA.
+
 ## License
 
 This project is released into the public domain. See [LICENSE](LICENSE).

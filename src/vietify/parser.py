@@ -105,7 +105,8 @@ InitialConsonant =
 # whatever appear in EndingConsonant or ApprxEndingConsonant needs to be mapped in ENDING_CONSONANT_MAPPING (otherwise will be mapped to null )
 EndingConsonant =
 # very specific for vietnamese
-     "t" !"ʃ"
+     "tʃ"
+    / "t" !"ʃ"
     / "k" !(Stress? "w")
     / "p"
 
@@ -116,7 +117,8 @@ EndingConsonant =
 # this are mostly kept as they are for 'weak vietify' and turn to an approximate one in 'strong vietify'
 ApprxEndingConsonant = 
 # i purposefully only choose stop consonants and l here
-     "b"
+     "dʒ"
+    / "b"
     / "ɡ"
     / "d"
 
@@ -187,12 +189,16 @@ Glide =
     / "ɥ"
 
 TrueDiphthong =
-      "oʊ"
+      "əʊ"
+    / "iə"
+    / "ɪə"
+    / "oʊ"
     / "eɪ"
     / "aɪ"
     / "ɑɪ"
     / "aʊ"
     / "əj"
+    / "ɛj"
     / "ɔɪ"
     / "wa"
     / "yi"

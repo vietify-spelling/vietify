@@ -19,10 +19,12 @@ ENDING_CONSONANT_MAPPING: dict[str, str] = {
     "s" : "t",
     "z" : "t",
 
-    "l": "l",
-    "ɫ": "l",
+    "l": "",
+    "ɫ": "",
+    "tʃ": "ch",
+    "dʒ": "gi",
 
-    "ʁ": "ʁ",
+    "ʁ": "c",
 
     #german
     "x": "c",
@@ -38,20 +40,25 @@ NUCLEUS_MAPPING: dict[str, str] = {
     # exact 1-1 correspondant
     "a": "a",
     "aɪ": "ai",
+    "aɪ" : "ai",
     "e": "ê",
     "eɪ": "ây",
     "i": "i",
     "iɛ": "ia",
-    "o": "o",
+    "o": "ô",
     "oʊ": "âu",
+    "əʊ" : "âu",
     "u": "u",
     "uɛ": "oe", ##
     "ɔ": "o",
     "ɔɪ": "oi",
     "ə": "ơ",
     "əj": "ơi",
+    "ɛj": "ây",
     "ɛ": "e",
     "ɒ" : "o",
+    "iə" : "ia",
+    "ɪə": "ia",
 
     "ɨ": "ư",
  
@@ -64,6 +71,7 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "ɔʏ": "oi",
 
     # "j": "i",
+    "jiə" : "ia",
     "jaʊ": "iau",
     "jeɪ": "iây",
     "ji": "i",
@@ -76,9 +84,12 @@ NUCLEUS_MAPPING: dict[str, str] = {
     "jɛ": "iê",
     "jɪ": "i",
     "jʊ": "iu",
+    "jø": "ia",
 
     "waʊ": "uau",
     "weɪ": "uây",
+    "waɪ" :"uai",
+    "wiə" : "uiê",
     "wi": "ui",
     "woʊ": "uâu",
     "wu": "u",
@@ -143,7 +154,6 @@ NASAL_CODA_ONSETS: dict[str, str] = {
     "f": "ph",
     "s": "x",
     "z": "z",
-    "l": "l",
     "ʁ": "ɡ",
 }
 
